@@ -11,6 +11,7 @@ const float CONSTANTE_INTEGRALE = 1;
 const float CONSTANTE_DERIVEE = 1;
 const float TENSION_COMMANDE_MAX = 1.3;
 const float TENSION_COMMANDE_MIN = 0.7;
+const int TAILLEARRAYMASSESMOYENNES = 100;
 
 float derniereTension = 0.0;
 float sommeErreurs = 0.0;
@@ -21,6 +22,9 @@ int lastButtonState = 0; // État précédent des boutons
 String messageLigneDuHaut = "Bienvenue!";
 String messageLigneDuBas;
 float masseDeQualibrage = 0.00;
+float massesMoyennes[TAILLEARRAYMASSESMOYENNES] = {0.0};
+float masseMoyenne = 0.0;
+int indiceArrayDeMoyenne = 0;
 
 // On intialise la librairie avec les pins utilisées
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
@@ -52,6 +56,16 @@ int read_LCD_buttons()
   return btnNONE;  // when all others fail, return this...
 }
 
+// Fonction pour obtenir la moyenne de la masse
+float getMasseMoyenne(){
+  float averageMasse = 0;
+  for(int i = 0; i < TAILLEARRAYMASSESMOYENNES; i++) {
+    averageMasse += massesMoyennes[i];
+  }
+  averageMasse = averageMasse/TAILLEARRAYMASSESMOYENNES;
+  return averageMasse;
+}
+
 // Fonction pour changer de grammes à ounces
 String uniteDeLaMasse(float masse) {
   String masseAvecUnites;
@@ -67,20 +81,21 @@ String uniteDeLaMasse(float masse) {
 }
 
 // Fonction pour identifier le type de pièces
-String typeDePiece(float masse) {
+String typeDePiece(float massePesee) {
   String typeDePiece;
-  if ((0.97 < masse/3.95 and masse/3.95 < 1.03) or (0.97 < masse/4.6 and masse/4.6 < 1.03)) {
+  float mesMasses[] = {3.95, 4.6, 1.75, 2.07, 5.05, 4.40, 6.27, 7.00, 6.92, 7.3};
+  if ((0.97 < massePesee/3.95 and massePesee/3.95 < 1.03) or (0.97 < massePesee/4.6 and massePesee/4.6 < 1.03)) {
     typeDePiece = "1 x 0.05$";
-  } else if ((0.97 < masse/1.75 and masse/1.75 < 1.03) or (0.97 < masse/2.07 and masse/2.07 < 1.03)){
+  } else if ((0.97 < massePesee/1.75 and massePesee/1.75 < 1.03) or (0.97 < massePesee/2.07 and massePesee/2.07 < 1.03)){
     typeDePiece = "1 x 0.10$";
-  } else if ((0.97 < masse/5.05 and masse/5.05 < 1.03) or (0.97 < masse/4.400 and masse/4.400 < 1.03)){
+  } else if ((0.97 < massePesee/5.05 and massePesee/5.05 < 1.03) or (0.97 < massePesee/4.400 and massePesee/4.400 < 1.03)){
     typeDePiece = "1 x 0.25$";
-  } else if ((0.97 < masse/6.27 and masse/6.27 < 1.03) or (0.97 < masse/7 and masse/7 < 1.03)){
+  } else if ((0.97 < massePesee/6.27 and massePesee/6.27 < 1.03) or (0.97 < massePesee/7 and massePesee/7 < 1.03)){
     typeDePiece = "1 x 1.00$";
-  } else if ((0.97 < masse/6.92 and masse/6.92 < 1.03) or (0.97 < masse/7.3 and masse/7.3 < 1.03)){
+  } else if ((0.97 < massePesee/6.92 and massePesee/6.92 < 1.03) or (0.97 < massePesee/7.3 and massePesee/7.3 < 1.03)){
     typeDePiece = "1 x 2.00$";
   } else {
-    typeDePiece = "Mauvaise pièce";
+    typeDePiece = "Mauvaise piece";
   }
   return typeDePiece;
 }
@@ -104,6 +119,9 @@ void ecrireSorties(){ // Fonction pour écrire les sorties
 }
 
 void setMasse(float masse){
+  massesMoyennes[indiceArrayDeMoyenne] = masse;
+  indiceArrayDeMoyenne++;
+  indiceArrayDeMoyenne %= TAILLEARRAYMASSESMOYENNES;
   if (buttonsState != lastButtonState and buttonsState != lastButtonState + 1 and buttonsState != lastButtonState - 1) {
     if (buttonsState < 60) { // Quand on clique sur le bouton right
       messageLigneDuHaut = "Nouvelle masse tare:";
@@ -116,12 +134,14 @@ void setMasse(float masse){
       lcd.print ("Down  ");
     }
     else if (buttonsState < 600){ // Quand on clique sur le bouton left
+      masseMoyenne = getMasseMoyenne();
       messageLigneDuHaut = "Authentification";
-      messageLigneDuBas = typeDePiece(masse);
+      messageLigneDuBas = typeDePiece(masseMoyenne);
     }
     else if (buttonsState < 800){ // Quand on clique sur le bouton select
+      masseMoyenne = getMasseMoyenne();
       messageLigneDuHaut = "Masse totale:";
-      messageLigneDuBas = uniteDeLaMasse(masse);
+      messageLigneDuBas = uniteDeLaMasse(masseMoyenne);
     }
   }
   lastButtonState = buttonsState; // On sauvegarde l'état actuel comme étant l'état précédent
@@ -167,7 +187,7 @@ float getTensionCommandePID(float tensionActuelle) {
 
 ISR(TIMER1_COMPA_vect) {
     // Add code here that gets executed each time the timer interrupt is triggered
-    masse = 7.3; // TODO: change this
+    float masse = 4.6; // TODO: change this
     lireEntrees();
     setMasse(masse - masseDeQualibrage);
     ecrireSorties();
