@@ -3,7 +3,7 @@ int commandePin = 2;
 
 // PID
 const float TENSION_CONSIGNE = 3.5;
-const float DELTA_TEMPS = 0.1; // en secondes
+const float DELTA_TEMPS = 0.001; // en secondes
 const float CONSTANTE_PROPORTIONNELLE = 1;
 const float CONSTANTE_INTEGRALE = 1;
 const float CONSTANTE_DERIVEE = 1;
@@ -50,21 +50,44 @@ float getTensionCommandePID(float tensionActuelle) {
   return commande;
 }
 
-void setup() {
-  pinMode(commandePin, OUTPUT);
-  
-  Serial.begin(9600);
+ISR(TIMER1_COMPA_vect) {
+    // Add code here that gets executed each time the timer interrupt is triggered
+    int capteurPositionValue = analogRead(capteurPositionPin);
+    float tensionPosition = (5.0 / 1024) * capteurPositionValue;
+    float commandeTension = getTensionCommandePID(tensionPosition);
+    int commandeTensionDiscret = (int) (255 / 5.0) * commandeTension;
+    analogWrite(commandePin, commandeTensionDiscret);
+    Serial.print("consigne:"); Serial.print(TENSION_CONSIGNE); Serial.print(" ");
+    Serial.print("capteur:"); Serial.print(tensionPosition); Serial.print(" ");
+    Serial.print("commande:"); Serial.print(commandeTension); Serial.print("\n");
 }
 
-void loop() {
-  int capteurPositionValue = analogRead(capteurPositionPin);
-  float tensionPosition = (5.0 / 1024) * capteurPositionValue;
-  float commandeTension = getTensionCommandePID(tensionPosition);
-  int commandeTensionDiscret = (int) (255 / 5.0) * commandeTension;
-  analogWrite(commandePin, commandeTensionDiscret);
-  Serial.print("consigne:"); Serial.print(TENSION_CONSIGNE); Serial.print(" ");
-  Serial.print("capteur:"); Serial.print(tensionPosition); Serial.print(" ");
-  Serial.print("commande:"); Serial.print(commandeTension); Serial.print("\n");
-  // Serial.println(commandeTensionDiscret);
-  delay(1000 * DELTA_TEMPS);
+void setup() {
+  pinMode(commandePin, OUTPUT);
+
+  Serial.begin(9600);
+
+  // setup timer interrupts
+  noInterrupts();
+
+  // Le 1 signifie le timer 1, avec un compteur de 16 bits
+  TCCR1A = 0; // OC1A et OC1B sont déconnectés
+
+  TCCR1B = 0;
+
+  OCR1A = 16000; // Maximum counter value before clear, set for 1 kHz
+  TCCR1B |= (1 << WGM12); // Clear timer on compare match (CTC)
+  TCCR1B |= (1 << CS10); // No prescaler
+
+  //TIMSK1 = 0;
+  TIMSK1 |= (1 << OCIE1A); // enable comparator 1 interrupt
+
+  // start counter at 0
+  TCNT1 = 0;
+
+  // output compare register set to maximum
+
+  interrupts();
 }
+
+void loop() {}
