@@ -11,7 +11,7 @@ const float CONSTANTE_INTEGRALE = 1;
 const float CONSTANTE_DERIVEE = 1;
 const float TENSION_COMMANDE_MAX = 1.3;
 const float TENSION_COMMANDE_MIN = 0.7;
-const int TAILLEARRAYMASSESMOYENNES = 100;
+const int TAILLEARRAYMASSESMOYENNES = 55;
 
 float derniereTension = 0.0;
 float sommeErreurs = 0.0;
@@ -59,9 +59,11 @@ int read_LCD_buttons()
 // Fonction pour obtenir la moyenne de la masse
 float getMasseMoyenne(){
   float averageMasse = 0;
-  for(int i = 0; i < TAILLEARRAYMASSESMOYENNES; i++) {
+  int i = 0;
+  do {
     averageMasse += massesMoyennes[i];
-  }
+    i++;
+  } while (i < TAILLEARRAYMASSESMOYENNES);
   averageMasse = averageMasse/TAILLEARRAYMASSESMOYENNES;
   return averageMasse;
 }
@@ -83,18 +85,16 @@ String uniteDeLaMasse(float masse) {
 // Fonction pour identifier le type de pièces
 String typeDePiece(float massePesee) {
   String typeDePiece;
-  float mesMasses[] = {3.95, 4.6, 1.75, 2.07, 5.05, 4.40, 6.27, 7.00, 6.92, 7.3};
-  if ((0.97 < massePesee/3.95 and massePesee/3.95 < 1.03) or (0.97 < massePesee/4.6 and massePesee/4.6 < 1.03)) {
-    typeDePiece = "1 x 0.05$";
-  } else if ((0.97 < massePesee/1.75 and massePesee/1.75 < 1.03) or (0.97 < massePesee/2.07 and massePesee/2.07 < 1.03)){
-    typeDePiece = "1 x 0.10$";
-  } else if ((0.97 < massePesee/5.05 and massePesee/5.05 < 1.03) or (0.97 < massePesee/4.400 and massePesee/4.400 < 1.03)){
-    typeDePiece = "1 x 0.25$";
-  } else if ((0.97 < massePesee/6.27 and massePesee/6.27 < 1.03) or (0.97 < massePesee/7 and massePesee/7 < 1.03)){
-    typeDePiece = "1 x 1.00$";
-  } else if ((0.97 < massePesee/6.92 and massePesee/6.92 < 1.03) or (0.97 < massePesee/7.3 and massePesee/7.3 < 1.03)){
-    typeDePiece = "1 x 2.00$";
-  } else {
+  float mesMasses[] = {3.95, 1.75, 4.40, 6.27, 6.92};
+  String identificationMasses[] = {"1 x 0.05$","1 x 0.10$","1 x 0.25$","1 x 1.00$","1 x 2.00$"};
+  float dist = 999.99;
+  for(int i = 0; i < 5; i++){
+    if(abs(mesMasses[i] - massePesee) < dist and abs(mesMasses[i] - massePesee)/mesMasses[i]<0.03){
+      dist = abs(mesMasses[i] - massePesee);
+      typeDePiece = identificationMasses[i];
+    }
+  }
+  if (dist == 999.99){
     typeDePiece = "Mauvaise piece";
   }
   return typeDePiece;
@@ -187,7 +187,7 @@ float getTensionCommandePID(float tensionActuelle) {
 
 ISR(TIMER1_COMPA_vect) {
     // Add code here that gets executed each time the timer interrupt is triggered
-    float masse = 4.6; // TODO: change this
+    float masse = 6.3; // TODO: change this
     lireEntrees();
     setMasse(masse - masseDeQualibrage);
     ecrireSorties();
