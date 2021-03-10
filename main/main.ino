@@ -3,6 +3,7 @@
 
 const int DAC_I2C_ADDRESS = 0x60;
 const int CAPTEUR_POSITION_PIN = A8;
+const int CAPTEUR_COURANT_PIN = A10;
 
 // PID
 const float TENSION_CONSIGNE = 3.5;
@@ -17,7 +18,7 @@ float derniereTension = 0.0;
 float sommeErreurs = 0.0;
 
 // Fonctions des boutons
-const int TAILLEARRAYMASSESMOYENNES = 55;
+const int TAILLEARRAYMASSESMOYENNES = 10;
 const int TYPESDEPIECE = 10;
 const int NOMBREDEPIECESTOTALPOSSIBLE = 5;
 int buttonsState = 0; // État des boutons live
@@ -107,8 +108,8 @@ float masseTare () {
 
 void lireEntrees(){ // Fonction pour lire les entrées
   buttonsState = analogRead(0);
-  
-  if (buttonsState != lastButtonState and buttonsState != lastButtonState + 1 and buttonsState != lastButtonState - 1) {
+  Serial.println(buttonsState);
+  if (buttonsState != lastButtonState and buttonsState != lastButtonState + 5 and buttonsState != lastButtonState - 5) {
     if (buttonsState < 60) { // Quand on clique sur le bouton right
       mode = MODE_TARE;
       masseTare();
@@ -146,7 +147,7 @@ void ecrireSorties(){ // Fonction pour écrire les sorties
     messageLigneDuBas = uniteDeLaMasse(masseMoyenne);
   } else if (mode == MODE_TARE) {
     messageLigneDuHaut = "Tare";
-    messageLigneDuBas = getMasseInstantanee();
+    messageLigneDuBas = uniteDeLaMasse(getMasseInstantanee());
   }
   if (derniereLigneHaut != messageLigneDuHaut || derniereLigneBas != messageLigneDuBas) {
     lcd.clear();
@@ -220,8 +221,8 @@ void setup() {
 
   OCR1A = 16000; // Maximum counter value before clear, set for 1 kHz
   TCCR1B |= (1 << WGM12); // Clear timer on compare match (CTC)
-  //TCCR1B |= (1 << CS10); // No prescaler
-  TCCR1B |= (1 << CS11); // 8x prescaler
+  TCCR1B |= (1 << CS10); // No prescaler
+  //TCCR1B |= (1 << CS11); // 8x prescaler
 
   TIMSK1 |= (1 << OCIE1A); // enable comparator 1 interrupt
 
@@ -234,11 +235,11 @@ void setup() {
 }
 
 void loop() {
-
   Serial.print("consigne:"); Serial.print(TENSION_CONSIGNE); Serial.print(" ");
   Serial.print("capteur:"); Serial.print(tensionPosition); Serial.print(" ");
   Serial.print("commande:"); Serial.print(commandeTension); Serial.print("\n");
-  float masseMesuree = 7.3; // TODO: change this
+  float tensionCapteurCourant = (5.0/1024) * analogRead(CAPTEUR_COURANT_PIN);
+  float masseMesuree = tensionCapteurCourant * (100.0 / 5); // TODO: change this
   lireEntrees();
   setMasse(masseMesuree);
   ecrireSorties();
