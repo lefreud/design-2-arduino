@@ -34,6 +34,14 @@ float tensionCapteurCourant = 0;
 // On intialise la librairie avec les pins utilisées
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 
+// Boutons keypad
+const int BTN_VALUE_MARGIN = 5;
+
+const int BTN_SELECT = 720;
+const int BTN_LEFT = 476;
+const int BTN_UP = 130;
+const int BTN_DOWN = 304;
+const int NO_BTN = 1023;
 
 const int MODE_MASSE_TOTALE = 0;
 const int MODE_COMPTAGE = 1;
@@ -107,12 +115,16 @@ float masseTare () {
   masseDeQualibrage = massesMoyennes[indiceArrayDeMoyenne];
 }
 
+bool isBoutonSelectionne(int bouton) {
+  return abs(buttonsState - bouton) < BTN_VALUE_MARGIN;
+}
+
 void lireEntrees(){ // Fonction pour lire les entrées
   buttonsState = analogRead(0);
   Serial.println(buttonsState);
-  if (buttonsState != lastButtonState and buttonsState != lastButtonState + 5 and buttonsState != lastButtonState - 5) {
+  if (buttonsState >= lastButtonState + 2 or buttonsState <= lastButtonState - 2) {
     if (mode == MODE_ETALONNAGE) {
-      if (60 < buttonsState && buttonsState < 200) { // Quand on clique sur le bouton up seulement
+      if (isBoutonSelectionne(BTN_UP)) {
         if (indexDeEtalonnage == 0) {
           indexDeEtalonnage++;
         } else if (indexDeEtalonnage == 1) {
@@ -129,17 +141,14 @@ void lireEntrees(){ // Fonction pour lire les entrées
       }
     }
     else {
-    if (buttonsState < 60) { // Quand on clique sur le bouton right
+    if (isBoutonSelectionne(BTN_DOWN)) { // Quand on clique sur le bouton down
       mode = MODE_TARE;
       masseTare();
     }
-    else if (buttonsState < 400){
-      // down
-    }
-    else if (buttonsState < 600){ // Quand on clique sur le bouton left
+    else if (isBoutonSelectionne(BTN_LEFT)){ // Quand on clique sur le bouton left
       mode = MODE_COMPTAGE;
     }
-    else if (buttonsState < 800){ // Quand on clique sur le bouton select
+    else if (isBoutonSelectionne(BTN_SELECT)){ // Quand on clique sur le bouton select
       mode = MODE_MASSE_TOTALE;
       if (indiceUniteDeLaMasse == UNITE_GRAMME) {
         indiceUniteDeLaMasse = UNITE_ONCE;
@@ -266,9 +275,10 @@ void setup() {
 }
 
 void loop() {
+  /*
   Serial.print("consigne:"); Serial.print(TENSION_CONSIGNE); Serial.print(" ");
   Serial.print("capteur:"); Serial.print(tensionPosition); Serial.print(" ");
-  Serial.print("commande:"); Serial.print(commandeTension); Serial.print("\n");
+  Serial.print("commande:"); Serial.print(commandeTension); Serial.print("\n");*/
   tensionCapteurCourant = (5.0/1024) * analogRead(CAPTEUR_COURANT_PIN);
   float masseMesuree = tensionCapteurCourant * (100.0 / 5); // TODO: change this
   lireEntrees();
