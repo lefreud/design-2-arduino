@@ -6,15 +6,13 @@ const int CAPTEUR_POSITION_PIN = A8;
 const int CAPTEUR_COURANT_PIN = A10;
 
 // PID
-const float TENSION_CONSIGNE = 3.5;
-const float DELTA_TEMPS = 0.001; // en secondes
-const float CONSTANTE_PROPORTIONNELLE = 1;
-const float CONSTANTE_INTEGRALE = 10;
-const float CONSTANTE_DERIVEE = 0;
-const float TENSION_COMMANDE_MAX = 1.3;
+const float TENSION_CONSIGNE = 2.05;
+const float DELTA_TEMPS = 0.064; // en secondes
+const float CONSTANTE_PROPORTIONNELLE = 0.01;
+const float CONSTANTE_INTEGRALE = 0.1;
+const float TENSION_COMMANDE_MAX = 1.6;
 const float TENSION_COMMANDE_MIN = 0.7;
 
-float derniereTension = 0.0;
 float sommeErreurs = 0.0;
 
 // Fonctions des boutons
@@ -50,7 +48,7 @@ const int MODE_ETALONNAGE = 3;
 const int UNITE_GRAMME = 0;
 const int UNITE_ONCE = 1;
 
-int mode = MODE_ETALONNAGE;
+int mode = MODE_MASSE_TOTALE;
 int indiceUniteDeLaMasse = UNITE_GRAMME;
 int indexDeEtalonnage = 0;
 
@@ -121,7 +119,7 @@ bool isBoutonSelectionne(int bouton) {
 
 void lireEntrees(){ // Fonction pour lire les entrées
   buttonsState = analogRead(0);
-  Serial.println(buttonsState);
+  //Serial.println(buttonsState);
   if (buttonsState >= lastButtonState + 2 or buttonsState <= lastButtonState - 2) {
     if (mode == MODE_ETALONNAGE) {
       if (isBoutonSelectionne(BTN_UP)) {
@@ -205,26 +203,19 @@ void setMasse(float masse){
   indiceArrayDeMoyenne %= TAILLEARRAYMASSESMOYENNES;
 }
 
-
+float erreur = 0;
 float getTensionCommandePID(float tensionActuelle) {
-  float erreur = TENSION_CONSIGNE - tensionActuelle;
+  erreur = TENSION_CONSIGNE - tensionActuelle;
 
   float termeProportionnel = CONSTANTE_PROPORTIONNELLE * erreur;
   float termeIntegrale = CONSTANTE_INTEGRALE * (sommeErreurs + erreur) * DELTA_TEMPS;
-  float termeDerivee = CONSTANTE_DERIVEE * (tensionActuelle - derniereTension) / DELTA_TEMPS;
 
-  float commande = termeProportionnel + termeIntegrale + termeDerivee;
-
-  // mise a jour des variables
-  derniereTension = tensionActuelle;
+  float commande = termeProportionnel + termeIntegrale;
 
   // verification de securite et anti-windup
   if (commande > TENSION_COMMANDE_MAX) {
     // Serial.println("Attention! tension de commande maximale.");
     commande = TENSION_COMMANDE_MAX;
-  } else if (commande < TENSION_COMMANDE_MIN) {
-    // Serial.println("Attention! tension de commande minimale.");
-    commande = TENSION_COMMANDE_MIN;
   } else {
     // pas de saturation, donc pas besoin d'anti-windup on peut donc additionner les erreurs
     sommeErreurs += erreur;
@@ -261,9 +252,10 @@ void setup() {
 
   OCR1A = 16000; // Maximum counter value before clear, set for 1 kHz
   TCCR1B |= (1 << WGM12); // Clear timer on compare match (CTC)
-  TCCR1B |= (1 << CS10); // No prescaler
+  //TCCR1B |= (1 << CS10); // No prescaler
   //TCCR1B |= (1 << CS11); // 8x prescaler
-
+  TCCR1B |= (1 << CS11) | (1 << CS10); // 64x prescaler
+  
   TIMSK1 |= (1 << OCIE1A); // enable comparator 1 interrupt
 
   // start counter at 0
@@ -275,16 +267,14 @@ void setup() {
 }
 
 void loop() {
-  /*
   Serial.print("consigne:"); Serial.print(TENSION_CONSIGNE); Serial.print(" ");
   Serial.print("capteur:"); Serial.print(tensionPosition); Serial.print(" ");
-  Serial.print("commande:"); Serial.print(commandeTension); Serial.print("\n");*/
+  Serial.print("commande:"); Serial.print(commandeTension); Serial.print("\n");
   tensionCapteurCourant = (5.0/1024) * analogRead(CAPTEUR_COURANT_PIN);
   float masseMesuree = tensionCapteurCourant * (100.0 / 5); // TODO: change this
   lireEntrees();
   setMasse(masseMesuree);
   ecrireSorties();
- 
 
   // SORTIE DE LA COMMANDE DAC
   // https://ww1.microchip.com/downloads/en/DeviceDoc/22039d.pdf
