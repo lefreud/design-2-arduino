@@ -3,6 +3,7 @@
 
 const int DAC_I2C_ADDRESS = 0x60;
 const int CAPTEUR_POSITION_PIN = A8;
+const int CAPTEUR_COURANT_PIN = A4;
 
 // PID
 const float TENSION_CONSIGNE = 3.5;
