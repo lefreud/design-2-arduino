@@ -1,15 +1,14 @@
 #include <LiquidCrystal.h>
-#include <Wire.h>
 
-const int DAC_I2C_ADDRESS = 0x60;
-const int CAPTEUR_POSITION_PIN = A8;
+int capteurPositionPin = A0;
+int commandePin = 2;
 
 // PID
 const float TENSION_CONSIGNE = 3.5;
 const float DELTA_TEMPS = 0.001; // en secondes
 const float CONSTANTE_PROPORTIONNELLE = 1;
-const float CONSTANTE_INTEGRALE = 10;
-const float CONSTANTE_DERIVEE = 0;
+const float CONSTANTE_INTEGRALE = 1;
+const float CONSTANTE_DERIVEE = 1;
 const float TENSION_COMMANDE_MAX = 1.3;
 const float TENSION_COMMANDE_MIN = 0.7;
 const int TAILLEARRAYMASSESMOYENNES = 55;
@@ -20,7 +19,7 @@ float sommeErreurs = 0.0;
 int indiceUniteDeLaMasse = 0; // 0 si c'est en gramme et 1 si c'est en oz
 int buttonsState = 0; // État des boutons live
 int lastButtonState = 0; // État précédent des boutons
-String messageLigneDuHaut = "Bienvenue!";
+String messageLigneDuHaut = "Bienvenue!";;
 String messageLigneDuBas;
 float masseDeQualibrage = 0.00;
 float massesMoyennes[TAILLEARRAYMASSESMOYENNES] = {0.0};
@@ -172,40 +171,42 @@ float getTensionCommandePID(float tensionActuelle) {
 
   // mise a jour des variables
   derniereTension = tensionActuelle;
+  sommeErreurs += erreur; // a valider
 
-  // verification de securite et anti-windup
+  // verification de securite
   if (commande > TENSION_COMMANDE_MAX) {
     // Serial.println("Attention! tension de commande maximale.");
     commande = TENSION_COMMANDE_MAX;
   } else if (commande < TENSION_COMMANDE_MIN) {
     // Serial.println("Attention! tension de commande minimale.");
     commande = TENSION_COMMANDE_MIN;
-  } else {
-    // pas de saturation, donc pas besoin d'anti-windup on peut donc additionner les erreurs
-    sommeErreurs += erreur;
   }
   
   return commande;
 }
 
-int capteurPositionValue = 0;
-float tensionPosition = 0;
-float commandeTension = 0;
-
-int commandeTensionDiscret = 0;
-
 ISR(TIMER1_COMPA_vect) {
-    // Code qui s'execute a chaque interruption du timer
-    capteurPositionValue = analogRead(CAPTEUR_POSITION_PIN);
-    tensionPosition = (5.0 / 1024) * capteurPositionValue;
-    commandeTension = getTensionCommandePID(tensionPosition);
-    commandeTensionDiscret = (int) (4096 / 5.0) * commandeTension;
+    // Add code here that gets executed each time the timer interrupt is triggered
+    float masse = 14.9; // TODO: change this
+    lireEntrees();
+    setMasse(masse - masseDeQualibrage);
+    ecrireSorties();
+
+    int capteurPositionValue = analogRead(capteurPositionPin);
+    float tensionPosition = (5.0 / 1024) * capteurPositionValue;
+    float commandeTension = getTensionCommandePID(tensionPosition);
+    int commandeTensionDiscret = (int) (255 / 5.0) * commandeTension;
+    analogWrite(commandePin, commandeTensionDiscret);
+    Serial.print("consigne:"); Serial.print(TENSION_CONSIGNE); Serial.print(" ");
+    Serial.print("capteur:"); Serial.print(tensionPosition); Serial.print(" ");
+    Serial.print("commande:"); Serial.print(commandeTension); Serial.print("\n");
 }
 
 void setup() {
+  pinMode(commandePin, OUTPUT);
+
   Serial.begin(9600);
   lcd.begin(16, 2);
-  Wire.begin();
   // setup timer interrupts
   noInterrupts();
 
@@ -216,9 +217,9 @@ void setup() {
 
   OCR1A = 16000; // Maximum counter value before clear, set for 1 kHz
   TCCR1B |= (1 << WGM12); // Clear timer on compare match (CTC)
-  //TCCR1B |= (1 << CS10); // No prescaler
-  TCCR1B |= (1 << CS11); // 8x prescaler
+  TCCR1B |= (1 << CS10); // No prescaler
 
+  //TIMSK1 = 0;
   TIMSK1 |= (1 << OCIE1A); // enable comparator 1 interrupt
 
   // start counter at 0
@@ -229,28 +230,4 @@ void setup() {
   interrupts();
 }
 
-void loop() {
-
-  Serial.print("consigne:"); Serial.print(TENSION_CONSIGNE); Serial.print(" ");
-  Serial.print("capteur:"); Serial.print(tensionPosition); Serial.print(" ");
-  Serial.print("commande:"); Serial.print(commandeTension); Serial.print("\n");
-  float masse = 7.3; // TODO: change this
-  lireEntrees();
-  setMasse(masse - masseDeQualibrage);
-  ecrireSorties();
-
-  // SORTIE DE LA COMMANDE DAC
-  // https://ww1.microchip.com/downloads/en/DeviceDoc/22039d.pdf
-  Wire.beginTransmission(DAC_I2C_ADDRESS);
-
-  // mise a jour DAC
-  Wire.write(64);
-  
-  // 8 MSB bits
-  Wire.write(commandeTensionDiscret >> 4);
-  
-  // 4 LSB bits
-  Wire.write((commandeTensionDiscret & 0b1111) << 4);
-  
-  Wire.endTransmission();  
-}
+void loop() {}
