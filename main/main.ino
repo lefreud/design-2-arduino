@@ -111,7 +111,7 @@ void lireEntrees(){ // Fonction pour lire les entrées
   
   if (buttonsState != lastButtonState and buttonsState != lastButtonState + 1 and buttonsState != lastButtonState - 1) {
     if (mode == MODE_ETALONNAGE) {
-      if (buttonsState < 200) { // Quand on clique sur le bouton up
+      if (60 < buttonsState && buttonsState < 200) { // Quand on clique sur le bouton up seulement
         if (indexDeEtalonnage == 0) {
           indexDeEtalonnage++;
         } else if (indexDeEtalonnage == 1) {
