@@ -20,7 +20,6 @@ float sommeErreurs = 0.0;
 const int TAILLEARRAYMASSESMOYENNES = 55;
 const int TYPESDEPIECE = 10;
 const int NOMBREDEPIECESTOTALPOSSIBLE = 5;
-int indiceUniteDeLaMasse = 0; // 0 si c'est en gramme et 1 si c'est en oz
 int buttonsState = 0; // État des boutons live
 int lastButtonState = 0; // État précédent des boutons
 String messageLigneDuHaut = "Bienvenue!";
@@ -33,15 +32,15 @@ int indiceArrayDeMoyenne = 0;
 // On intialise la librairie avec les pins utilisées
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 
-// On définit la valeur des boutons et des clés utilisés
-int lcd_key     = 0;
-int adc_key_in  = 0;
-#define btnRIGHT  0
-#define btnUP     1
-#define btnDOWN   2
-#define btnLEFT   3
-#define btnSELECT 4
-#define btnNONE   5
+
+const int MODE_MASSE_TOTALE = 0;
+const int MODE_COMPTAGE = 1;
+const int MODE_TARE = 2;
+const int UNITE_GRAMME = 0;
+const int UNITE_ONCE = 1;
+
+int mode = MODE_MASSE_TOTALE;
+int indiceUniteDeLaMasse = UNITE_GRAMME;
 
 // Fonction pour l'étalonnage
 float etalonnageBalance(){
@@ -49,6 +48,10 @@ float etalonnageBalance(){
   while(analogRead(0) > 1000){
     
   }
+}
+
+float getMasseInstantanee() {
+  return massesMoyennes[indiceArrayDeMoyenne] - masseDeQualibrage;
 }
 
 // Fonction pour obtenir la moyenne de la masse
@@ -60,19 +63,17 @@ float getMasseMoyenne(){
     i++;
   } while (i < TAILLEARRAYMASSESMOYENNES);
   averageMasse = averageMasse/TAILLEARRAYMASSESMOYENNES;
-  return averageMasse;
+  return averageMasse - masseDeQualibrage;
 }
 
 // Fonction pour changer de grammes à ounces
 String uniteDeLaMasse(float masse) {
   String masseAvecUnites;
-  if (indiceUniteDeLaMasse == 0){
+  if (indiceUniteDeLaMasse == UNITE_GRAMME){
     masseAvecUnites = String(masse) + " g";
-    indiceUniteDeLaMasse = 1;
   }
   else{
     masseAvecUnites = String(masse/28.35) + " oz";
-    indiceUniteDeLaMasse = 0;
   }
   return masseAvecUnites;
 }
@@ -98,64 +99,71 @@ String typeDePiece(float massePesee) {
 }
 
 // Fonction pour changer la masse tare de la balance
-float masseTare (float masse) {
-  masseDeQualibrage = masse;
-  return masseDeQualibrage;
+float masseTare () {
+  masseDeQualibrage = massesMoyennes[indiceArrayDeMoyenne];
 }
+
+
 
 void lireEntrees(){ // Fonction pour lire les entrées
   buttonsState = analogRead(0);
+  
+  if (buttonsState != lastButtonState and buttonsState != lastButtonState + 1 and buttonsState != lastButtonState - 1) {
+    if (buttonsState < 60) { // Quand on clique sur le bouton right
+      mode = MODE_TARE;
+      masseTare();
+    }
+    else if (buttonsState < 200) {
+      // up
+    }
+    else if (buttonsState < 400){
+      // down
+    }
+    else if (buttonsState < 600){ // Quand on clique sur le bouton left
+      mode = MODE_COMPTAGE;
+    }
+    else if (buttonsState < 800){ // Quand on clique sur le bouton select
+      mode = MODE_MASSE_TOTALE;
+      if (indiceUniteDeLaMasse == UNITE_GRAMME) {
+        indiceUniteDeLaMasse = UNITE_ONCE;
+      } else {
+        indiceUniteDeLaMasse = UNITE_GRAMME;
+      }
+    }
+  }
+  lastButtonState = buttonsState;
 }
 
 void ecrireSorties(){ // Fonction pour écrire les sorties
-  lcd.clear();
-  lcd.setCursor(0,0);
-  lcd.print(messageLigneDuHaut);
-  lcd.setCursor(0,1);
-  lcd.print(messageLigneDuBas);
+  masseMoyenne = getMasseMoyenne();
+  String derniereLigneHaut = messageLigneDuHaut;
+  String derniereLigneBas = messageLigneDuBas;
+  if (mode == MODE_COMPTAGE) {
+    messageLigneDuHaut = "Authentification";
+    messageLigneDuBas = typeDePiece(masseMoyenne);
+  } else if (mode == MODE_MASSE_TOTALE) {
+    messageLigneDuHaut = "Masse totale";
+    messageLigneDuBas = uniteDeLaMasse(masseMoyenne);
+  } else if (mode == MODE_TARE) {
+    messageLigneDuHaut = "Tare";
+    messageLigneDuBas = getMasseInstantanee();
+  }
+  if (derniereLigneHaut != messageLigneDuHaut || derniereLigneBas != messageLigneDuBas) {
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print(messageLigneDuHaut);
+    lcd.setCursor(0,1);
+    lcd.print(messageLigneDuBas);
+  }
+  
 }
 
 void setMasse(float masse){
   massesMoyennes[indiceArrayDeMoyenne] = masse;
   indiceArrayDeMoyenne++;
   indiceArrayDeMoyenne %= TAILLEARRAYMASSESMOYENNES;
-  if (buttonsState != lastButtonState and buttonsState != lastButtonState + 1 and buttonsState != lastButtonState - 1) {
-    if (buttonsState < 60) { // Quand on clique sur le bouton right
-      messageLigneDuHaut = "Nouvelle masse tare:";
-      messageLigneDuBas = masseTare(masse);
-    }
-    else if (buttonsState < 200) {
-      lcd.print ("Up    ");
-    }
-    else if (buttonsState < 400){
-      lcd.print ("Down  ");
-    }
-    else if (buttonsState < 600){ // Quand on clique sur le bouton left
-      masseMoyenne = getMasseMoyenne();
-      messageLigneDuHaut = "Authentification";
-      messageLigneDuBas = typeDePiece(masseMoyenne);
-    }
-    else if (buttonsState < 800){ // Quand on clique sur le bouton select
-      masseMoyenne = getMasseMoyenne();
-      messageLigneDuHaut = "Masse totale:";
-      messageLigneDuBas = uniteDeLaMasse(masseMoyenne);
-    }
-  }
-  lastButtonState = buttonsState; // On sauvegarde l'état actuel comme étant l'état précédent
 }
 
-
-void afficherTensionPosition(float tensionPosition) {
-  Serial.print("Tension de position: ");
-  Serial.print(tensionPosition);
-  Serial.println(" V");
-}
-
-void afficherCommande(float commande) {
-  Serial.print("Commande: ");
-  Serial.print(commande);
-  Serial.println(" V");
-}
 
 float getTensionCommandePID(float tensionActuelle) {
   float erreur = TENSION_CONSIGNE - tensionActuelle;
@@ -230,10 +238,11 @@ void loop() {
   Serial.print("consigne:"); Serial.print(TENSION_CONSIGNE); Serial.print(" ");
   Serial.print("capteur:"); Serial.print(tensionPosition); Serial.print(" ");
   Serial.print("commande:"); Serial.print(commandeTension); Serial.print("\n");
-  float masse = 7.3; // TODO: change this
+  float masseMesuree = 7.3; // TODO: change this
   lireEntrees();
-  setMasse(masse - masseDeQualibrage);
+  setMasse(masseMesuree);
   ecrireSorties();
+ 
 
   // SORTIE DE LA COMMANDE DAC
   // https://ww1.microchip.com/downloads/en/DeviceDoc/22039d.pdf
