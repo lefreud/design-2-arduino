@@ -1,25 +1,29 @@
 #include <LiquidCrystal.h>
+#include <Wire.h>
 
-int capteurPositionPin = A0;
-int commandePin = 2;
+const int DAC_I2C_ADDRESS = 0x60;
+const int CAPTEUR_POSITION_PIN = A8;
 
 // PID
 const float TENSION_CONSIGNE = 3.5;
 const float DELTA_TEMPS = 0.001; // en secondes
 const float CONSTANTE_PROPORTIONNELLE = 1;
-const float CONSTANTE_INTEGRALE = 1;
-const float CONSTANTE_DERIVEE = 1;
+const float CONSTANTE_INTEGRALE = 10;
+const float CONSTANTE_DERIVEE = 0;
 const float TENSION_COMMANDE_MAX = 1.3;
 const float TENSION_COMMANDE_MIN = 0.7;
-const int TAILLEARRAYMASSESMOYENNES = 55;
 
 float derniereTension = 0.0;
 float sommeErreurs = 0.0;
 
+// Fonctions des boutons
+const int TAILLEARRAYMASSESMOYENNES = 55;
+const int TYPESDEPIECE = 10;
+const int NOMBREDEPIECESTOTALPOSSIBLE = 5;
 int indiceUniteDeLaMasse = 0; // 0 si c'est en gramme et 1 si c'est en oz
 int buttonsState = 0; // État des boutons live
 int lastButtonState = 0; // État précédent des boutons
-String messageLigneDuHaut = "Bienvenue!";;
+String messageLigneDuHaut = "Bienvenue!";
 String messageLigneDuBas;
 float masseDeQualibrage = 0.00;
 float massesMoyennes[TAILLEARRAYMASSESMOYENNES] = {0.0};
@@ -39,21 +43,12 @@ int adc_key_in  = 0;
 #define btnSELECT 4
 #define btnNONE   5
 
-// read the buttons
-int read_LCD_buttons()
-{
-  adc_key_in = analogRead(0);      // read the value from the sensor
-  // my buttons when read are centered at these valies: 0, 144, 329, 504, 741
-  // we add approx 50 to those values and check to see if we are close
-  if (adc_key_in > 1000) return btnNONE; // We make this the 1st option for speed reasons since it will be the most likely result
-  // For V1.1 us this threshold
-  if (adc_key_in < 50)   return btnRIGHT;
-  if (adc_key_in < 250)  return btnUP;
-  if (adc_key_in < 450)  return btnDOWN;
-  if (adc_key_in < 650)  return btnLEFT;
-  if (adc_key_in < 850)  return btnSELECT;
-
-  return btnNONE;  // when all others fail, return this...
+// Fonction pour l'étalonnage
+float etalonnageBalance(){
+  ecrireSorties();
+  while(analogRead(0) > 1000){
+    
+  }
 }
 
 // Fonction pour obtenir la moyenne de la masse
@@ -85,16 +80,18 @@ String uniteDeLaMasse(float masse) {
 // Fonction pour identifier le type de pièces
 String typeDePiece(float massePesee) {
   String typeDePiece;
-  float mesMasses[] = {3.95, 1.75, 4.40, 6.27, 6.92};
-  String identificationMasses[] = {"1 x 0.05$","1 x 0.10$","1 x 0.25$","1 x 1.00$","1 x 2.00$"};
-  float dist = 999.99;
-  for(int i = 0; i < 5; i++){
-    if(abs(mesMasses[i] - massePesee) < dist and abs(mesMasses[i] - massePesee)/mesMasses[i]<0.03){
-      dist = abs(mesMasses[i] - massePesee);
-      typeDePiece = identificationMasses[i];
+  float mesMasses[] = {3.95, 4.6, 1.75, 2.07, 4.40, 5.05, 6.27, 7.00, 6.92, 7.3};
+  String identificationMasses[] = {" x 0.05$"," x 0.05$"," x 0.10$"," x 0.10$"," x 0.25$"," x 0.25$"," x 1.00$"," x 1.00$"," x 2.00$"," x 2.00$"};
+  float dist = INFINITY;
+  for(int i = 0; i < TYPESDEPIECE; i++){
+    for(int x = 1; x <= NOMBREDEPIECESTOTALPOSSIBLE; x++){
+      if(abs(mesMasses[i] - massePesee/x) < dist and (abs(mesMasses[i] - massePesee/x)/(mesMasses[i]))<0.03){
+        dist = abs(mesMasses[i] - massePesee/x);
+        typeDePiece = String(x) + identificationMasses[i];
+      }
     }
   }
-  if (dist == 999.99){
+  if (dist == INFINITY){
     typeDePiece = "Mauvaise piece";
   }
   return typeDePiece;
@@ -171,42 +168,40 @@ float getTensionCommandePID(float tensionActuelle) {
 
   // mise a jour des variables
   derniereTension = tensionActuelle;
-  sommeErreurs += erreur; // a valider
 
-  // verification de securite
+  // verification de securite et anti-windup
   if (commande > TENSION_COMMANDE_MAX) {
     // Serial.println("Attention! tension de commande maximale.");
     commande = TENSION_COMMANDE_MAX;
   } else if (commande < TENSION_COMMANDE_MIN) {
     // Serial.println("Attention! tension de commande minimale.");
     commande = TENSION_COMMANDE_MIN;
+  } else {
+    // pas de saturation, donc pas besoin d'anti-windup on peut donc additionner les erreurs
+    sommeErreurs += erreur;
   }
   
   return commande;
 }
 
-ISR(TIMER1_COMPA_vect) {
-    // Add code here that gets executed each time the timer interrupt is triggered
-    float masse = 14.9; // TODO: change this
-    lireEntrees();
-    setMasse(masse - masseDeQualibrage);
-    ecrireSorties();
+int capteurPositionValue = 0;
+float tensionPosition = 0;
+float commandeTension = 0;
 
-    int capteurPositionValue = analogRead(capteurPositionPin);
-    float tensionPosition = (5.0 / 1024) * capteurPositionValue;
-    float commandeTension = getTensionCommandePID(tensionPosition);
-    int commandeTensionDiscret = (int) (255 / 5.0) * commandeTension;
-    analogWrite(commandePin, commandeTensionDiscret);
-    Serial.print("consigne:"); Serial.print(TENSION_CONSIGNE); Serial.print(" ");
-    Serial.print("capteur:"); Serial.print(tensionPosition); Serial.print(" ");
-    Serial.print("commande:"); Serial.print(commandeTension); Serial.print("\n");
+int commandeTensionDiscret = 0;
+
+ISR(TIMER1_COMPA_vect) {
+    // Code qui s'execute a chaque interruption du timer
+    capteurPositionValue = analogRead(CAPTEUR_POSITION_PIN);
+    tensionPosition = (5.0 / 1024) * capteurPositionValue;
+    commandeTension = getTensionCommandePID(tensionPosition);
+    commandeTensionDiscret = (int) (4096 / 5.0) * commandeTension;
 }
 
 void setup() {
-  pinMode(commandePin, OUTPUT);
-
   Serial.begin(9600);
   lcd.begin(16, 2);
+  Wire.begin();
   // setup timer interrupts
   noInterrupts();
 
@@ -217,9 +212,9 @@ void setup() {
 
   OCR1A = 16000; // Maximum counter value before clear, set for 1 kHz
   TCCR1B |= (1 << WGM12); // Clear timer on compare match (CTC)
-  TCCR1B |= (1 << CS10); // No prescaler
+  //TCCR1B |= (1 << CS10); // No prescaler
+  TCCR1B |= (1 << CS11); // 8x prescaler
 
-  //TIMSK1 = 0;
   TIMSK1 |= (1 << OCIE1A); // enable comparator 1 interrupt
 
   // start counter at 0
@@ -230,4 +225,28 @@ void setup() {
   interrupts();
 }
 
-void loop() {}
+void loop() {
+
+  Serial.print("consigne:"); Serial.print(TENSION_CONSIGNE); Serial.print(" ");
+  Serial.print("capteur:"); Serial.print(tensionPosition); Serial.print(" ");
+  Serial.print("commande:"); Serial.print(commandeTension); Serial.print("\n");
+  float masse = 7.3; // TODO: change this
+  lireEntrees();
+  setMasse(masse - masseDeQualibrage);
+  ecrireSorties();
+
+  // SORTIE DE LA COMMANDE DAC
+  // https://ww1.microchip.com/downloads/en/DeviceDoc/22039d.pdf
+  Wire.beginTransmission(DAC_I2C_ADDRESS);
+
+  // mise a jour DAC
+  Wire.write(64);
+  
+  // 8 MSB bits
+  Wire.write(commandeTensionDiscret >> 4);
+  
+  // 4 LSB bits
+  Wire.write((commandeTensionDiscret & 0b1111) << 4);
+  
+  Wire.endTransmission();  
+}
