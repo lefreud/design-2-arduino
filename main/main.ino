@@ -20,7 +20,7 @@ float sommeErreurs = 0.0;
 // Fonctions des boutons
 const int TAILLEARRAYMASSESMOYENNES = 10;
 const int TYPESDEPIECE = 10;
-const int NOMBREDEPIECESTOTALPOSSIBLE = 5;
+const int NOMBREDEPIECESTOTALPOSSIBLE = 3;
 int buttonsState = 0; // État des boutons live
 int lastButtonState = 0; // État précédent des boutons
 String messageLigneDuHaut = "Bienvenue!";
@@ -112,7 +112,7 @@ void lireEntrees(){ // Fonction pour lire les entrées
   Serial.println(buttonsState);
   if (buttonsState != lastButtonState and buttonsState != lastButtonState + 5 and buttonsState != lastButtonState - 5) {
     if (mode == MODE_ETALONNAGE) {
-      if (buttonsState < 200) { // Quand on clique sur le bouton up
+      if (60 < buttonsState && buttonsState < 200) { // Quand on clique sur le bouton up seulement
         if (indexDeEtalonnage == 0) {
           indexDeEtalonnage++;
         } else if (indexDeEtalonnage == 1) {
