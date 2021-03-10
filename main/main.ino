@@ -18,9 +18,9 @@ float derniereTension = 0.0;
 float sommeErreurs = 0.0;
 
 // Fonctions des boutons
-const int TAILLEARRAYMASSESMOYENNES = 55;
+const int TAILLEARRAYMASSESMOYENNES = 10;
 const int TYPESDEPIECE = 10;
-const int NOMBREDEPIECESTOTALPOSSIBLE = 5;
+const int NOMBREDEPIECESTOTALPOSSIBLE = 3;
 int buttonsState = 0; // État des boutons live
 int lastButtonState = 0; // État précédent des boutons
 String messageLigneDuHaut = "Bienvenue!";
