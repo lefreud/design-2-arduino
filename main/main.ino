@@ -36,19 +36,21 @@ LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 const int MODE_MASSE_TOTALE = 0;
 const int MODE_COMPTAGE = 1;
 const int MODE_TARE = 2;
+const int MODE_ETALONNAGE = 3;
 const int UNITE_GRAMME = 0;
 const int UNITE_ONCE = 1;
 
-int mode = MODE_MASSE_TOTALE;
+int mode = MODE_ETALONNAGE;
 int indiceUniteDeLaMasse = UNITE_GRAMME;
+int indexDeEtalonnage = 0;
 
-// Fonction pour l'étalonnage
-float etalonnageBalance(){
-  ecrireSorties();
-  while(analogRead(0) > 1000){
-    
-  }
-}
+// variable pour le calcul ax+b de l'étalonnage
+float tension0g = 0.0;
+float tension100g = 0.0;
+float masse0g = 0.0;
+float masse100g = 100.0;
+float penteDroiteEtalonnage = 0.0;
+float bDroiteEtalonnage = 0.0;
 
 float getMasseInstantanee() {
   return massesMoyennes[indiceArrayDeMoyenne] - masseDeQualibrage;
@@ -103,18 +105,31 @@ float masseTare () {
   masseDeQualibrage = massesMoyennes[indiceArrayDeMoyenne];
 }
 
-
-
 void lireEntrees(){ // Fonction pour lire les entrées
   buttonsState = analogRead(0);
   
   if (buttonsState != lastButtonState and buttonsState != lastButtonState + 1 and buttonsState != lastButtonState - 1) {
+    if (mode == MODE_ETALONNAGE) {
+      if (buttonsState < 200) { // Quand on clique sur le bouton up
+        if (indexDeEtalonnage == 0) {
+          indexDeEtalonnage++;
+        } else if (indexDeEtalonnage == 1) {
+          tension0g = tensionCapteurCourant;
+          indexDeEtalonnage++;
+        } else if (indexDeEtalonnage == 2) {
+          tension100g = tensionCapteurCourant;
+          penteDroiteEtalonnage = (masse100g - masse0g)/(tension100g - tension0g);
+          bDroiteEtalonnage = masse100g - penteDroiteEtalonnage * tension100g;
+          indexDeEtalonnage++;
+        } else if (indexDeEtalonnage == 3) {
+          mode = MODE_MASSE_TOTALE;
+        }
+      }
+    }
+    else {
     if (buttonsState < 60) { // Quand on clique sur le bouton right
       mode = MODE_TARE;
       masseTare();
-    }
-    else if (buttonsState < 200) {
-      // up
     }
     else if (buttonsState < 400){
       // down
@@ -129,6 +144,7 @@ void lireEntrees(){ // Fonction pour lire les entrées
       } else {
         indiceUniteDeLaMasse = UNITE_GRAMME;
       }
+    }
     }
   }
   lastButtonState = buttonsState;
@@ -147,6 +163,20 @@ void ecrireSorties(){ // Fonction pour écrire les sorties
   } else if (mode == MODE_TARE) {
     messageLigneDuHaut = "Tare";
     messageLigneDuBas = getMasseInstantanee();
+  } else if (mode == MODE_ETALONNAGE) {
+    if (indexDeEtalonnage == 0) {
+      messageLigneDuHaut = "Etalonnage Pt. 1";
+      messageLigneDuBas = "Voir Manuel";
+    } else if (indexDeEtalonnage == 1) {
+      messageLigneDuHaut = "Ne rien mettre";
+      messageLigneDuBas = "sur la balance.";
+    } else if (indexDeEtalonnage == 2) {
+      messageLigneDuHaut = "Mettre 100 grammes";
+      messageLigneDuBas = "sur la balance.";
+    } else if (indexDeEtalonnage == 3) {
+      messageLigneDuHaut = "Etalonnage";
+      messageLigneDuBas = "complete!";
+    }
   }
   if (derniereLigneHaut != messageLigneDuHaut || derniereLigneBas != messageLigneDuBas) {
     lcd.clear();
@@ -238,6 +268,7 @@ void loop() {
   Serial.print("consigne:"); Serial.print(TENSION_CONSIGNE); Serial.print(" ");
   Serial.print("capteur:"); Serial.print(tensionPosition); Serial.print(" ");
   Serial.print("commande:"); Serial.print(commandeTension); Serial.print("\n");
+  tensionCapteurCourant = (5.0/1024) * analogRead(CAPTEUR_COURANT_PIN);
   float masseMesuree = 7.3; // TODO: change this
   lireEntrees();
   setMasse(masseMesuree);
