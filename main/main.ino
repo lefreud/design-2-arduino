@@ -6,9 +6,10 @@ const int CAPTEUR_POSITION_PIN = A8;
 const int CAPTEUR_COURANT_PIN = A10;
 
 // PID
-const float TENSION_CONSIGNE = 2.05;
+// const float TENSION_CONSIGNE = 2.05;
+const float TENSION_CONSIGNE = 1.8;
 const float DELTA_TEMPS = 0.064; // en secondes
-const float CONSTANTE_PROPORTIONNELLE = 0.01;
+const float CONSTANTE_PROPORTIONNELLE = 0.001;
 const float CONSTANTE_INTEGRALE = 0.1;
 const float TENSION_COMMANDE_MAX = 1.6;
 const float TENSION_COMMANDE_MIN = 0.7;
@@ -48,7 +49,7 @@ const int MODE_ETALONNAGE = 3;
 const int UNITE_GRAMME = 0;
 const int UNITE_ONCE = 1;
 
-int mode = MODE_MASSE_TOTALE;
+int mode = MODE_ETALONNAGE;
 int indiceUniteDeLaMasse = UNITE_GRAMME;
 int indexDeEtalonnage = 0;
 
@@ -59,6 +60,10 @@ float masse0g = 0.0;
 float masse100g = 100.0;
 float penteDroiteEtalonnage = 0.0;
 float bDroiteEtalonnage = 0.0;
+
+float getMasseAPartirDeCourant(float tensionCapteurCourant) {
+  return penteDroiteEtalonnage * tensionCapteurCourant + bDroiteEtalonnage;
+}
 
 float getMasseInstantanee() {
   return massesMoyennes[indiceArrayDeMoyenne] - masseDeQualibrage;
@@ -216,7 +221,10 @@ float getTensionCommandePID(float tensionActuelle) {
   if (commande > TENSION_COMMANDE_MAX) {
     // Serial.println("Attention! tension de commande maximale.");
     commande = TENSION_COMMANDE_MAX;
-  } else {
+  } else if (commande < 0) {
+    commande = 0; 
+  }
+  else {
     // pas de saturation, donc pas besoin d'anti-windup on peut donc additionner les erreurs
     sommeErreurs += erreur;
   }
@@ -271,7 +279,8 @@ void loop() {
   Serial.print("capteur:"); Serial.print(tensionPosition); Serial.print(" ");
   Serial.print("commande:"); Serial.print(commandeTension); Serial.print("\n");
   tensionCapteurCourant = (5.0/1024) * analogRead(CAPTEUR_COURANT_PIN);
-  float masseMesuree = tensionCapteurCourant * (100.0 / 5); // TODO: change this
+  float masseMesuree = getMasseAPartirDeCourant(tensionCapteurCourant);
+  // float masseMesuree = tensionCapteurCourant * (100.0 / 5); // TODO: change this
   lireEntrees();
   setMasse(masseMesuree);
   ecrireSorties();
