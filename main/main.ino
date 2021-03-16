@@ -85,7 +85,7 @@ float getMasseMoyenne(){
 String uniteDeLaMasse(float masse) {
   String masseAvecUnites;
   if (indiceUniteDeLaMasse == UNITE_GRAMME){
-    masseAvecUnites = String(masse) + " g";
+    masseAvecUnites = String((float)((round(masse*10))/10.0),1) + " g";
   }
   else{
     masseAvecUnites = String(masse/28.35) + " oz";
