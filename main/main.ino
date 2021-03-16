@@ -85,7 +85,7 @@ float getMasseMoyenne(){
 String uniteDeLaMasse(float masse) {
   String masseAvecUnites;
   if (indiceUniteDeLaMasse == UNITE_GRAMME){
-    masseAvecUnites = String(masse) + " g";
+    masseAvecUnites = String((float)((round(masse*10))/10.0),1) + " g";
   }
   else{
     masseAvecUnites = String(masse/28.35) + " oz";
@@ -101,8 +101,8 @@ String typeDePiece(float massePesee) {
   float dist = INFINITY;
   for(int i = 0; i < TYPESDEPIECE; i++){
     for(int x = 1; x <= NOMBREDEPIECESTOTALPOSSIBLE; x++){
-      if(abs(mesMasses[i] - massePesee/x) < dist and (abs(mesMasses[i] - massePesee/x)/(mesMasses[i]))<0.03){
-        dist = abs(mesMasses[i] - massePesee/x);
+      if(abs(x*mesMasses[i] - massePesee) < dist and (abs(x*mesMasses[i] - massePesee)/(x*mesMasses[i]))<0.03){
+        dist = abs(x*mesMasses[i] - massePesee);
         typeDePiece = String(x) + identificationMasses[i];
       }
     }
