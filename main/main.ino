@@ -240,16 +240,19 @@ int commandeTensionDiscret = 0;
 
 ISR(TIMER1_COMPA_vect) {
     // Code qui s'execute a chaque interruption du timer
+    /*
     capteurPositionValue = analogRead(CAPTEUR_POSITION_PIN);
     tensionPosition = (5.0 / 1024) * capteurPositionValue;
     commandeTension = getTensionCommandePID(tensionPosition);
     commandeTensionDiscret = (int) (4096 / 5.0) * commandeTension;
+    */
 }
 
 void setup() {
   Serial.begin(9600);
   lcd.begin(16, 2);
   Wire.begin();
+  
   // setup timer interrupts
   noInterrupts();
 
@@ -275,6 +278,11 @@ void setup() {
 }
 
 void loop() {
+
+  capteurPositionValue = analogRead(CAPTEUR_POSITION_PIN);
+  tensionPosition = (5.0 / 1024) * capteurPositionValue;
+  commandeTension = getTensionCommandePID(tensionPosition);
+  commandeTensionDiscret = (int) (4096 / 5.0) * commandeTension;
   Serial.print("consigne:"); Serial.print(TENSION_CONSIGNE); Serial.print(" ");
   Serial.print("capteur:"); Serial.print(tensionPosition); Serial.print(" ");
   Serial.print("commande:"); Serial.print(commandeTension); Serial.print("\n");
