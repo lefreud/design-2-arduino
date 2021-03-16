@@ -101,8 +101,8 @@ String typeDePiece(float massePesee) {
   float dist = INFINITY;
   for(int i = 0; i < TYPESDEPIECE; i++){
     for(int x = 1; x <= NOMBREDEPIECESTOTALPOSSIBLE; x++){
-      if(abs(mesMasses[i] - massePesee/x) < dist and (abs(mesMasses[i] - massePesee/x)/(mesMasses[i]))<0.03){
-        dist = abs(mesMasses[i] - massePesee/x);
+      if(abs(x*mesMasses[i] - massePesee) < dist and (abs(x*mesMasses[i] - massePesee)/(x*mesMasses[i]))<0.03){
+        dist = abs(x*mesMasses[i] - massePesee);
         typeDePiece = String(x) + identificationMasses[i];
       }
     }
