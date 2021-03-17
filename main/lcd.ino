@@ -1,7 +1,5 @@
-
 #include <LiquidCrystal.h>
 
-// Fonctions des boutons
 const int TAILLEARRAYMASSESMOYENNES = 10;
 const int TAILLEARRAYTENSIONSMOYENNES = TAILLEARRAYMASSESMOYENNES;
 const int TYPESDEPIECE = 10;
@@ -127,11 +125,15 @@ bool isBoutonSelectionne(int bouton) {
 }
 
 bool isStable(){
-  float tensionMoyenne = getTensionMoyenne();
-  return (tensionMoyenne - 0.1 <= TENSION_CONSIGNE && TENSION_CONSIGNE <= tensionMoyenne + 0.1);
+  int x = 0;
+  do {
+    if(!(tensionsMoyennes[x] - 0.08 <= TENSION_CONSIGNE && TENSION_CONSIGNE <= tensionsMoyennes[x] + 0.08)){
+      return false;
+    }
+    x++;
+  } while (x < TAILLEARRAYTENSIONSMOYENNES);
+  return true;
 }
-
-
 float getTensionCourantMoyen() {
   float courant = 0;
   for (int i = 0; i < NOMBRE_COURANTS_MOYENNE; i++) {
