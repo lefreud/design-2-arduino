@@ -124,9 +124,14 @@ bool isBoutonSelectionne(int bouton) {
 }
 
 bool isStable(){
-  float tensionMoyenne = getTensionMoyenne();
-  float tensionActuelle = getTensionPosition();
-  return (tensionMoyenne - 0.1 <= tensionActuelle && tensionActuelle <= tensionMoyenne + 0.1);
+  int x = 0;
+  do {
+    if(!(tensionsMoyennes[x] - 0.08 <= TENSION_CONSIGNE && TENSION_CONSIGNE <= tensionsMoyennes[x] + 0.08)){
+      return false;
+    }
+    x++;
+  } while (x < TAILLEARRAYTENSIONSMOYENNES);
+  return true;
 }
 
 void lireEntrees(){ // Fonction pour lire les entrées
