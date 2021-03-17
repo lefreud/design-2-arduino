@@ -18,9 +18,18 @@ void setup() {
   Serial.begin(9600);
   initPID();
   initLcd();
+  pinMode(50, OUTPUT);
 }
 
+bool out = HIGH;
 void loop() {
+  if (out == HIGH) {
+    out = LOW;
+  } else {
+    out = HIGH;
+  }
+  digitalWrite(50, out);
+  
   // Lecture masse
   tensionCapteurCourant = (5.0/1024) * analogRead(CAPTEUR_COURANT_PIN);
   float masseMesuree = getMasseAPartirDeCourant(tensionCapteurCourant);
@@ -35,6 +44,7 @@ void loop() {
   float tensionCommande = getTensionCommandePI(tensionPosition);
   envoyerCommande(tensionCommande);
 
+  setTension(tensionPosition);
   // Creation du serial plot
   Serial.print("consigne:"); Serial.print(TENSION_CONSIGNE); Serial.print(" ");
   Serial.print("capteur:"); Serial.print(tensionPosition); Serial.print(" ");
