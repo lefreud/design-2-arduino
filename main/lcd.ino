@@ -18,6 +18,14 @@ int indiceArrayMoyenneDeMasse = 0;
 float tensionsMoyennes[TAILLEARRAYTENSIONSMOYENNES] = {0.0};
 int indiceArrayMoyenneDeTension = 0;
 
+// Comptage des pièces
+int indiceComptageDesPieces = 0;
+int nombreDeTypeDePieces = 5;
+String identificationPieces[] = {"0.05$","0.10$","0.25$","1.00$","2.00$"};
+float identificationMasses[] = {3.95,1.75,4.40,6.27,6.92};
+String pieceChoisie;
+String piece = "";
+
 // On intialise la librairie avec les pins utilisées
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 
@@ -31,8 +39,9 @@ const int BTN_DOWN = 304;
 const int NO_BTN = 1023;
 
 const int MODE_MASSE_TOTALE = 0;
-const int MODE_COMPTAGE = 1;
+const int MODE_SELECTION = 1;
 const int MODE_ETALONNAGE = 2;
+const int MODE_COMPTAGE = 3;
 const int UNITE_GRAMME = 0;
 const int UNITE_ONCE = 1;
 
@@ -96,24 +105,25 @@ String uniteDeLaMasse(float masse) {
   return masseAvecUnites;
 }
 
-// Fonction pour identifier le type de pièces
-String typeDePiece(float massePesee) {
-  String typeDePiece;
-  float mesMasses[] = {3.95, 4.6, 1.75, 2.07, 4.40, 5.05, 6.27, 7.00, 6.92, 7.3};
-  String identificationMasses[] = {" x 0.05$"," x 0.05$"," x 0.10$"," x 0.10$"," x 0.25$"," x 0.25$"," x 1.00$"," x 1.00$"," x 2.00$"," x 2.00$"};
+// Fonction pour compter le nombre de pièces
+String compterPieces(float massePesee) {
+  String nombreDePieces;
+  int wantedpos;
+  for(int iter=0;iter<nombreDeTypeDePieces;iter++){
+    if(piece == identificationPieces[iter]) {
+     wantedpos = iter;
+     break;
+   }
+  }
+  float weigth = identificationMasses[wantedpos];
   float dist = INFINITY;
-  for(int i = 0; i < TYPESDEPIECE; i++){
-    for(int x = 1; x <= NOMBREDEPIECESTOTALPOSSIBLE; x++){
-      if(abs(x*mesMasses[i] - massePesee) < dist and (abs(x*mesMasses[i] - massePesee)/(x*mesMasses[i]))<0.03){
-        dist = abs(x*mesMasses[i] - massePesee);
-        typeDePiece = String(x) + identificationMasses[i];
+  for(int x = 1; x <= NOMBREDEPIECESTOTALPOSSIBLE; x++){
+      if(abs(x*weigth - massePesee) < dist and (abs(x*weigth - massePesee)/(x*weigth))<0.03){
+        dist = abs(x*weigth - massePesee);
+        nombreDePieces = String(x) + " x " + identificationPieces[wantedpos];
       }
-    }
   }
-  if (dist == INFINITY){
-    typeDePiece = "Mauvaise piece";
-  }
-  return typeDePiece;
+  return nombreDePieces;
 }
 
 // Fonction pour changer la masse tare de la balance
@@ -135,6 +145,7 @@ bool isStable(){
   } while (x < TAILLEARRAYTENSIONSMOYENNES);
   return true;
 }
+
 float getTensionCourantMoyen() {
   float courant = 0;
   for (int i = 0; i < NOMBRE_COURANTS_MOYENNE; i++) {
@@ -152,7 +163,7 @@ void lireEntrees(){ // Fonction pour lire les entrées
   //Serial.println(buttonsState);
   if (buttonsState >= lastButtonState + 2 or buttonsState <= lastButtonState - 2) {
     if (mode == MODE_ETALONNAGE) {
-      if (isBoutonSelectionne(BTN_UP)) {
+      if (isBoutonSelectionne(BTN_LEFT)) {
         if (indexDeEtalonnage == 0) {
           indexDeEtalonnage++;
         } else if (indexDeEtalonnage == 1) {
@@ -165,6 +176,7 @@ void lireEntrees(){ // Fonction pour lire les entrées
           indexDeEtalonnage++;
         } else if (indexDeEtalonnage == 3) {
           mode = MODE_MASSE_TOTALE;
+          indexDeEtalonnage++;
         }
       }
     }
@@ -173,7 +185,11 @@ void lireEntrees(){ // Fonction pour lire les entrées
       masseTare();
       mode = MODE_MASSE_TOTALE;
     }
-    else if (isBoutonSelectionne(BTN_LEFT)){ // Quand on clique sur le bouton left
+    else if (isBoutonSelectionne(BTN_UP)){ // Quand on clique sur le bouton up
+      mode = MODE_SELECTION;
+      piece = choixTypeDePiece();
+    }
+    else if (isBoutonSelectionne(BTN_LEFT) and 3 < indexDeEtalonnage){ // Quand on clique sur le bouton up
       mode = MODE_COMPTAGE;
     }
     else if (isBoutonSelectionne(BTN_SELECT)){ // Quand on clique sur le bouton select
@@ -193,12 +209,15 @@ void ecrireSorties(){ // Fonction pour écrire les sorties
   masseMoyenne = getMasseMoyenne();
   String derniereLigneHaut = messageLigneDuHaut;
   String derniereLigneBas = messageLigneDuBas;
-  if (mode == MODE_COMPTAGE) {
+  if (mode == MODE_SELECTION) {
     messageLigneDuHaut = "Authentification";
-    messageLigneDuBas = typeDePiece(masseMoyenne);
+    messageLigneDuBas = piece;
   } else if (mode == MODE_MASSE_TOTALE) {
     messageLigneDuHaut = "Masse totale";
     messageLigneDuBas = uniteDeLaMasse(masseMoyenne);
+  } else if (mode == MODE_COMPTAGE and piece != "") {
+    messageLigneDuHaut = "Il y a";
+    messageLigneDuBas = compterPieces(masseMoyenne);
   } else if (mode == MODE_ETALONNAGE) {
     if (indexDeEtalonnage == 0) {
       messageLigneDuHaut = "Etalonnage Pt. 1";
@@ -236,4 +255,11 @@ void setTension(float tension){
   tensionsMoyennes[indiceArrayMoyenneDeTension] = tension;
   indiceArrayMoyenneDeTension++;
   indiceArrayMoyenneDeTension %= TAILLEARRAYTENSIONSMOYENNES;
+}
+
+String choixTypeDePiece(){
+  pieceChoisie = identificationPieces[indiceComptageDesPieces];
+  indiceComptageDesPieces++;
+  indiceComptageDesPieces %= nombreDeTypeDePieces;
+  return pieceChoisie;
 }
