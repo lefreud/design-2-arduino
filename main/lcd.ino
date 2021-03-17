@@ -108,7 +108,7 @@ String uniteDeLaMasse(float masse) {
 // Fonction pour compter le nombre de pièces
 String compterPieces(float massePesee) {
   String nombreDePieces;
-  int wantedpos;
+  int wantedpos=-1;
   for(int iter=0;iter<nombreDeTypeDePieces;iter++){
     if(piece == identificationPieces[iter]) {
      wantedpos = iter;
@@ -117,8 +117,8 @@ String compterPieces(float massePesee) {
   }
   float weigth = identificationMasses[wantedpos];
   float dist = INFINITY;
-  for(int x = 1; x <= NOMBREDEPIECESTOTALPOSSIBLE; x++){
-      if(abs(x*weigth - massePesee) < dist and (abs(x*weigth - massePesee)/(x*weigth))<0.03){
+  for(int x = 0; x <= NOMBREDEPIECESTOTALPOSSIBLE; x++){
+      if(abs(x*weigth - massePesee) < dist){
         dist = abs(x*weigth - massePesee);
         nombreDePieces = String(x) + " x " + identificationPieces[wantedpos];
       }
