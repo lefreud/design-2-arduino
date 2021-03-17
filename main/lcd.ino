@@ -197,7 +197,7 @@ void ecrireSorties(){ // Fonction pour écrire les sorties
     }
   }
   if(!isStable()){
-    messageLigneDuBas = "Calcul...";
+    messageLigneDuBas = "Calcul en cours...";
   }
   if (derniereLigneHaut != messageLigneDuHaut || derniereLigneBas != messageLigneDuBas) {
     lcd.clear();
