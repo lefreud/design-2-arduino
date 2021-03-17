@@ -4,6 +4,7 @@
 const int TAILLEARRAYMASSESMOYENNES = 10;
 const int TYPESDEPIECE = 10;
 const int NOMBREDEPIECESTOTALPOSSIBLE = 3;
+const int NOMBRE_COURANTS_MOYENNE = 5000;
 int buttonsState = 0; // État des boutons live
 int lastButtonState = 0; // État précédent des boutons
 String messageLigneDuHaut = "Bienvenue!";
@@ -109,6 +110,18 @@ bool isBoutonSelectionne(int bouton) {
   return abs(buttonsState - bouton) < BTN_VALUE_MARGIN;
 }
 
+float getTensionCourantMoyen() {
+  float courant = 0;
+  for (int i = 0; i < NOMBRE_COURANTS_MOYENNE; i++) {
+    courant += analogRead(CAPTEUR_COURANT_PIN);
+  }
+  courant /= NOMBRE_COURANTS_MOYENNE;
+
+  // conversion en 0-5V
+  courant *= (5.0/1024);
+  return courant;
+}
+
 void lireEntrees(){ // Fonction pour lire les entrées
   buttonsState = analogRead(0);
   //Serial.println(buttonsState);
@@ -118,10 +131,10 @@ void lireEntrees(){ // Fonction pour lire les entrées
         if (indexDeEtalonnage == 0) {
           indexDeEtalonnage++;
         } else if (indexDeEtalonnage == 1) {
-          tension0g = tensionCapteurCourant;
+          tension0g = getTensionCourantMoyen();
           indexDeEtalonnage++;
         } else if (indexDeEtalonnage == 2) {
-          tension100g = tensionCapteurCourant;
+          tension100g = getTensionCourantMoyen();
           penteDroiteEtalonnage = (masse100g - masse0g)/(tension100g - tension0g);
           bDroiteEtalonnage = masse100g - penteDroiteEtalonnage * tension100g;
           indexDeEtalonnage++;
