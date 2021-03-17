@@ -2,16 +2,19 @@
 
 // Fonctions des boutons
 const int TAILLEARRAYMASSESMOYENNES = 10;
+const int TAILLEARRAYTENSIONSMOYENNES = TAILLEARRAYMASSESMOYENNES;
 const int TYPESDEPIECE = 10;
 const int NOMBREDEPIECESTOTALPOSSIBLE = 3;
 int buttonsState = 0; // État des boutons live
 int lastButtonState = 0; // État précédent des boutons
-String messageLigneDuHaut = "Bienvenue!";
+String messageLigneDuHaut;
 String messageLigneDuBas;
 float masseDeQualibrage = 0.00;
 float massesMoyennes[TAILLEARRAYMASSESMOYENNES] = {0.0};
 float masseMoyenne = 0.0;
-int indiceArrayDeMoyenne = 0;
+int indiceArrayMoyenneDeMasse = 0;
+float tensionsMoyennes[TAILLEARRAYTENSIONSMOYENNES] = {0.0};
+int indiceArrayMoyenneDeTension = 0;
 
 // On intialise la librairie avec les pins utilisées
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
@@ -52,7 +55,7 @@ float getMasseAPartirDeCourant(float tensionCapteurCourant) {
 }
 
 float getMasseInstantanee() {
-  return massesMoyennes[indiceArrayDeMoyenne] - masseDeQualibrage;
+  return massesMoyennes[indiceArrayMoyenneDeMasse] - masseDeQualibrage;
 }
 
 // Fonction pour obtenir la moyenne de la masse
@@ -65,6 +68,18 @@ float getMasseMoyenne(){
   } while (i < TAILLEARRAYMASSESMOYENNES);
   averageMasse = averageMasse/TAILLEARRAYMASSESMOYENNES;
   return averageMasse - masseDeQualibrage;
+}
+
+// Fonction pour obtenir la moyenne de la tension
+float getTensionMoyenne(){
+  float averageTension = 0;
+  int j = 0;
+  do {
+    averageTension += tensionsMoyennes[j];
+    j++;
+  } while (j < TAILLEARRAYTENSIONSMOYENNES);
+  averageTension = averageTension/TAILLEARRAYTENSIONSMOYENNES;
+  return averageTension;
 }
 
 // Fonction pour changer de grammes à ounces
@@ -101,11 +116,17 @@ String typeDePiece(float massePesee) {
 
 // Fonction pour changer la masse tare de la balance
 float masseTare () {
-  masseDeQualibrage = massesMoyennes[indiceArrayDeMoyenne];
+  masseDeQualibrage = massesMoyennes[indiceArrayMoyenneDeMasse];
 }
 
 bool isBoutonSelectionne(int bouton) {
   return abs(buttonsState - bouton) < BTN_VALUE_MARGIN;
+}
+
+bool isStable(){
+  float tensionMoyenne = getTensionMoyenne();
+  float tensionActuelle = getTensionPosition();
+  return (tensionMoyenne - 0.1 <= tensionActuelle && tensionActuelle <= tensionMoyenne + 0.1);
 }
 
 void lireEntrees(){ // Fonction pour lire les entrées
@@ -131,8 +152,8 @@ void lireEntrees(){ // Fonction pour lire les entrées
     }
     else {
     if (isBoutonSelectionne(BTN_DOWN)) { // Quand on clique sur le bouton down
-      mode = MODE_MASSE_TOTALE;
       masseTare();
+      mode = MODE_MASSE_TOTALE;
     }
     else if (isBoutonSelectionne(BTN_LEFT)){ // Quand on clique sur le bouton left
       mode = MODE_COMPTAGE;
@@ -175,6 +196,9 @@ void ecrireSorties(){ // Fonction pour écrire les sorties
       messageLigneDuBas = "complete!";
     }
   }
+  if(!isStable()){
+    messageLigneDuBas = "Calcul...";
+  }
   if (derniereLigneHaut != messageLigneDuHaut || derniereLigneBas != messageLigneDuBas) {
     lcd.clear();
     lcd.setCursor(0,0);
@@ -185,7 +209,13 @@ void ecrireSorties(){ // Fonction pour écrire les sorties
 }
 
 void setMasse(float masse){
-  massesMoyennes[indiceArrayDeMoyenne] = masse;
-  indiceArrayDeMoyenne++;
-  indiceArrayDeMoyenne %= TAILLEARRAYMASSESMOYENNES;
+  massesMoyennes[indiceArrayMoyenneDeMasse] = masse;
+  indiceArrayMoyenneDeMasse++;
+  indiceArrayMoyenneDeMasse %= TAILLEARRAYMASSESMOYENNES;
+}
+
+void setTension(float tension){
+  tensionsMoyennes[indiceArrayMoyenneDeTension] = tension;
+  indiceArrayMoyenneDeTension++;
+  indiceArrayMoyenneDeTension %= TAILLEARRAYTENSIONSMOYENNES;
 }
