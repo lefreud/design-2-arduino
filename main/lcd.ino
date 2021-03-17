@@ -27,8 +27,7 @@ const int NO_BTN = 1023;
 
 const int MODE_MASSE_TOTALE = 0;
 const int MODE_COMPTAGE = 1;
-const int MODE_TARE = 2;
-const int MODE_ETALONNAGE = 3;
+const int MODE_ETALONNAGE = 2;
 const int UNITE_GRAMME = 0;
 const int UNITE_ONCE = 1;
 
@@ -132,7 +131,7 @@ void lireEntrees(){ // Fonction pour lire les entrées
     }
     else {
     if (isBoutonSelectionne(BTN_DOWN)) { // Quand on clique sur le bouton down
-      mode = MODE_TARE;
+      mode = MODE_MASSE_TOTALE;
       masseTare();
     }
     else if (isBoutonSelectionne(BTN_LEFT)){ // Quand on clique sur le bouton left
@@ -161,9 +160,6 @@ void ecrireSorties(){ // Fonction pour écrire les sorties
   } else if (mode == MODE_MASSE_TOTALE) {
     messageLigneDuHaut = "Masse totale";
     messageLigneDuBas = uniteDeLaMasse(masseMoyenne);
-  } else if (mode == MODE_TARE) {
-    messageLigneDuHaut = "Tare";
-    messageLigneDuBas = uniteDeLaMasse(getMasseInstantanee());
   } else if (mode == MODE_ETALONNAGE) {
     if (indexDeEtalonnage == 0) {
       messageLigneDuHaut = "Etalonnage Pt. 1";
