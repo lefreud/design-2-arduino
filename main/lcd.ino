@@ -5,6 +5,7 @@ const int TAILLEARRAYTENSIONSMOYENNES = TAILLEARRAYMASSESMOYENNES;
 const int TYPESDEPIECE = 10;
 const int NOMBREDEPIECESTOTALPOSSIBLE = 3;
 const int NOMBRE_COURANTS_MOYENNE = 5000;
+const float MARGE_STABILITE_POSITION = 0.08;
 
 int buttonsState = 0; // État des boutons live
 int lastButtonState = 0; // État précédent des boutons
@@ -127,7 +128,7 @@ bool isBoutonSelectionne(int bouton) {
 bool isStable(){
   int x = 0;
   do {
-    if(!(tensionsMoyennes[x] - 0.08 <= TENSION_CONSIGNE && TENSION_CONSIGNE <= tensionsMoyennes[x] + 0.08)){
+    if(!(tensionsMoyennes[x] - MARGE_STABILITE_POSITION <= TENSION_CONSIGNE && TENSION_CONSIGNE <= tensionsMoyennes[x] + MARGE_STABILITE_POSITION)){
       return false;
     }
     x++;
