@@ -5,9 +5,9 @@ const int CAPTEUR_COURANT_PIN = A10;
 // PID
 // const float TENSION_CONSIGNE = 2.05;
 const float TENSION_CONSIGNE = 1.8;
-const float DELTA_TEMPS = 0.064; // en secondes
+const float DELTA_TEMPS = 0.0454545; // en secondes
 const float CONSTANTE_PROPORTIONNELLE = 0.001;
-const float CONSTANTE_INTEGRALE = 0.1;
+const float CONSTANTE_INTEGRALE = 0.1408;
 const float TENSION_COMMANDE_MAX = 1.6;
 const float TENSION_COMMANDE_MIN = 0.7;
 
